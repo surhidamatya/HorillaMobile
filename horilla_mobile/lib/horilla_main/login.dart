@@ -27,6 +27,7 @@ class _LoginPageState extends State<LoginPage> {
   String? _serverError;
   String? _usernameError;
   String? _passwordError;
+  bool _isLoading = false;
 
 
   @override
@@ -81,11 +82,12 @@ class _LoginPageState extends State<LoginPage> {
 
 
   Future<void> _login() async {
-    // Clear previous errors
+    // Clear previous errors and set loading state
     setState(() {
       _serverError = null;
       _usernameError = null;
       _passwordError = null;
+      _isLoading = true;
     });
 
     String serverAddress = serverController.text.trim();
@@ -114,6 +116,9 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     if (hasError) {
+      setState(() {
+        _isLoading = false;
+      });
       return;
     }
 
@@ -191,6 +196,10 @@ class _LoginPageState extends State<LoginPage> {
           // If parsing fails, use default message
         }
         
+        setState(() {
+          _isLoading = false;
+        });
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage),
@@ -199,6 +208,10 @@ class _LoginPageState extends State<LoginPage> {
         );
       }
     } on TimeoutException {
+      setState(() {
+        _isLoading = false;
+      });
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Connection timeout. Please check your server address and try again.'),
@@ -206,6 +219,10 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
     } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      
       print('Login error: $e'); // Debug log
       String errorMessage = 'Connection failed';
       if (e.toString().contains('CORS')) {
@@ -323,6 +340,7 @@ class _LoginPageState extends State<LoginPage> {
                             serverController,
                             false,
                             errorText: _serverError,
+                            enabled: !_isLoading,
                           ),
                           SizedBox(height: MediaQuery.of(context).size.height * 0.02),
                           _buildTextFormField(
@@ -330,6 +348,7 @@ class _LoginPageState extends State<LoginPage> {
                             usernameController,
                             false,
                             errorText: _usernameError,
+                            enabled: !_isLoading,
                           ),
                           SizedBox(height: MediaQuery.of(context).size.height * 0.02),
                           _buildTextFormField(
@@ -343,28 +362,40 @@ class _LoginPageState extends State<LoginPage> {
                               });
                             },
                             errorText: _passwordError,
+                            enabled: !_isLoading,
                           ),
                           SizedBox(height: MediaQuery.of(context).size.height * 0.04),
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: _login,
+                              onPressed: _isLoading ? null : _login,
                               style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                backgroundColor: Colors.red,
+                                foregroundColor: whiteColor,
+                                backgroundColor: redColor,
+                                disabledBackgroundColor: redColor.withOpacity(0.6),
+                                disabledForegroundColor: whiteColor,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8.0),
                                 ),
                               ),
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 10.0),
-                                child: Text(
-                                  'Sign In',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 20,
-                                  ),
-                                ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 10.0),
+                                child: _isLoading
+                                    ? SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(whiteColor),
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Sign In',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 20,
+                                        ),
+                                      ),
                               ),
                             ),
                           ),
@@ -389,6 +420,7 @@ class _LoginPageState extends State<LoginPage> {
         bool? passwordVisible,
         VoidCallback? togglePasswordVisibility,
         String? errorText,
+        bool enabled = true,
       }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -403,6 +435,7 @@ class _LoginPageState extends State<LoginPage> {
         SizedBox(height: MediaQuery.of(context).size.height * 0.005),
         TextFormField(
           controller: controller,
+          enabled: enabled,
           obscureText: isPassword ? !(passwordVisible ?? false) : false,
           decoration: InputDecoration(
             border: OutlineInputBorder(
